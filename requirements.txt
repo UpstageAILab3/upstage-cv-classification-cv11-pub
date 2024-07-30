@@ -9,3 +9,4 @@ pandas==2.1.4
 Pillow==9.4.0
 timm==0.9.12
 nbstripout # git commit 시 output 삭제
+wandb
