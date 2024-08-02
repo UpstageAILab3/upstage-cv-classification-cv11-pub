@@ -10,3 +10,4 @@ Pillow==9.4.0
 timm==0.9.12
 wandb
 python-dotenv
+matplotlib==3.7.1
