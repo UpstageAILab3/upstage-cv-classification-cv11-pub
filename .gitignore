@@ -1,6 +1,6 @@
 /data
-/wandb
-/WANDB_API_KEY.env
+/code/wandb
+/code/WANDB_API_KEY.env
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,windows,python,vim,visualstudiocode,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,windows,python,vim,visualstudiocode,jupyternotebooks
