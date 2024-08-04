@@ -343,8 +343,8 @@ def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_na
     
     print(f"Model checkpoint saved. filename: {cp_filename}")
 
-def load_model_checkpoint(cp_filename, model, optimizer):
-    checkpoint = torch.load(cp_filename)
+def load_model_checkpoint(cp_filename, model, optimizer, device):
+    checkpoint = torch.load(cp_filename, map_location = device)
     
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -423,7 +423,9 @@ def get_preds_list_by_tst_loader(model, tst_loader, device):
 
 def pred_and_save_to_csv(model, tst_loader, device, csv_filename):
     preds_list = get_preds_list_by_tst_loader(model, tst_loader, device)
+    preds_list_to_save_to_csv(preds_list, tst_loader, csv_filename)
 
+def preds_list_to_save_to_csv(preds_list, tst_loader, csv_filename):
     pred_df = pd.DataFrame(tst_loader.dataset.df, columns=['ID', 'target'])
     pred_df['target'] = preds_list
 
