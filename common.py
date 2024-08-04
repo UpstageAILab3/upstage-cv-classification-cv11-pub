@@ -261,7 +261,7 @@ def train_with_start_end_epoch(seed,
         print(log)
         
         if is_save_model_checkpoint:
-            save_model_checkpoint(epoch, model, model_name, optimizer, is_trn_full)
+            save_model_checkpoint(seed, epoch, model, model_name, optimizer, is_trn_full)
             print()
         
         if is_evaluate_train_valid and (val_loader != None):
@@ -322,12 +322,13 @@ def evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device):
     for k, v in log_dict.items():
         print(f'{k}: {v}')
 
-def save_model_checkpoint(epoch, model, model_name, optimizer, is_trn_full):
-    cp_filename = f"checkpoint-{model_name}_epoch_{epoch}_{is_trn_full}.pt"
+def save_model_checkpoint(seed, epoch, model, model_name, optimizer, is_trn_full):
+    cp_filename = f"checkpoint-{model_name}_seed_{seed}_epoch_{epoch}_isFull_{is_trn_full}.pt"
     
     torch.save(
         {
             "model": model_name,
+            "seed": seed,
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
@@ -340,10 +341,14 @@ def save_model_checkpoint(epoch, model, model_name, optimizer, is_trn_full):
 
 def load_model_checkpoint(cp_filename, model, optimizer):
     checkpoint = torch.load(cp_filename)
+    
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    
+    checkpoint_seed = checkpoint['seed']
     checkpoint_epoch = checkpoint['epoch']
-    return checkpoint_epoch + 1
+    
+    return checkpoint_epoch + 1, checkpoint_seed
 
 def retrain_full_dataset(seed,
                          epochs,
