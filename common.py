@@ -237,6 +237,8 @@ def train_dataset_split(train_csv_path, img_dir, trn_transform, trn_aug_transfor
     return train_dataset, val_dataset
 
 def train_with_start_end_epoch(seed,
+                               tst_img_size, 
+                               batch_size, 
                                start_epoch_inclusive, 
                                end_epoch_exclusive, 
                                trn_loader,
@@ -261,7 +263,7 @@ def train_with_start_end_epoch(seed,
         print(log)
         
         if is_save_model_checkpoint:
-            save_model_checkpoint(seed, epoch, model, model_name, optimizer, is_trn_full)
+            save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_name, optimizer, is_trn_full)
             print()
         
         if is_evaluate_train_valid and (val_loader != None):
@@ -322,13 +324,15 @@ def evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device):
     for k, v in log_dict.items():
         print(f'{k}: {v}')
 
-def save_model_checkpoint(seed, epoch, model, model_name, optimizer, is_trn_full):
+def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_name, optimizer, is_trn_full):
     cp_filename = f"checkpoint-{model_name}_seed_{seed}_epoch_{epoch}_isFull_{is_trn_full}.pt"
     
     torch.save(
         {
             "model": model_name,
             "seed": seed,
+            "tst_img_size": tst_img_size,
+            "batch_size": batch_size,
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
@@ -344,18 +348,16 @@ def load_model_checkpoint(cp_filename, model, optimizer):
     
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    
-    checkpoint_seed = checkpoint['seed']
-    checkpoint_epoch = checkpoint['epoch']
-    
-    return checkpoint_epoch + 1, checkpoint_seed
+
+    return checkpoint
 
 def retrain_full_dataset(seed,
+                         tst_img_size,
+                         batch_size,
                          epochs,
                          trn_transform, 
                          trn_aug_transform, 
                          augment_ratio,
-                         batch_size,
                          num_workers,
                          model_name,
                          loss_fn,
@@ -387,7 +389,9 @@ def retrain_full_dataset(seed,
 
     # 전체 데이터셋으로 재학습
     train_with_start_end_epoch(seed = seed,
-                               start_epoch_inclusive = 0, 
+                               tst_img_size = tst_img_size,
+                               batch_size = batch_size,
+                               start_epoch_inclusive = 0,
                                end_epoch_exclusive = epochs, 
                                trn_loader = full_loader,
                                val_loader = None,
