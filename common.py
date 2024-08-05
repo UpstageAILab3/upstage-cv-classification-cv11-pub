@@ -269,6 +269,18 @@ def train_with_start_end_epoch(seed,
         if is_evaluate_train_valid and (val_loader != None):
             evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device)
 
+def count_error_preds(preds, targets):
+    error_counts = {}
+    for pred, target in zip(preds, targets):
+        if pred == target: continue
+        
+        if target not in error_counts:
+            error_counts[target] = 1
+        else:
+            error_counts[target] += 1
+            
+    return error_counts
+
 def evaluate(seed, loader, model, loss_fn, device):
     # seed 를 다시 고정해서 학습할때 사용했던 augmentation 이 사용될 수 있도록 수정.
     set_seed(seed)
@@ -302,7 +314,7 @@ def evaluate(seed, loader, model, loss_fn, device):
     }
     #wandb.log(results)
 
-    return avg_loss, accuracy, f1
+    return avg_loss, accuracy, f1, count_error_preds(all_preds, all_targets)
 
 def evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device):
     train_results = evaluate(seed, trn_loader, model, loss_fn, device)
@@ -323,6 +335,9 @@ def evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device):
     print()
     for k, v in log_dict.items():
         print(f'{k}: {v}')
+        
+    print(f"train's error preds count: {train_results[3]}")
+    print(f"valid's error preds count: {valid_results[3]}")
 
 def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_name, optimizer, is_trn_full):
     cp_filename = f"checkpoint-{model_name}_seed_{seed}_epoch_{epoch}_isFull_{is_trn_full}.pt"
