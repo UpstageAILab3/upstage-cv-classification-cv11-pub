@@ -12,6 +12,7 @@ from albumentations.pytorch import ToTensorV2
 from torch.optim import Adam
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
 from PIL import Image
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score
@@ -424,7 +425,7 @@ def retrain_full_dataset(seed,
     
     return model, optimizer
 
-def get_preds_list_by_tst_loader(model, tst_loader, device):
+def get_preds_list_by_tst_loader(model, tst_loader, device, is_soft_voting=False):
     preds_list = []
 
     model.eval()
@@ -433,7 +434,12 @@ def get_preds_list_by_tst_loader(model, tst_loader, device):
 
         with torch.no_grad():
             preds = model(image)
-        preds_list.extend(preds.argmax(dim=1).detach().cpu().numpy())
+            
+        if is_soft_voting:
+            soft_preds = F.softmax(preds, dim=1)
+            preds_list.extend(soft_preds.detach().cpu().numpy())
+        else:
+            preds_list.extend(preds.argmax(dim=1).detach().cpu().numpy())
     
     return preds_list
 
