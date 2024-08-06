@@ -271,6 +271,7 @@ def train_with_start_end_epoch(seed,
 
 def count_error_preds(preds, targets):
     error_counts = {}
+
     for pred, target in zip(preds, targets):
         if pred == target: continue
         
@@ -279,7 +280,7 @@ def count_error_preds(preds, targets):
         else:
             error_counts[target] += 1
             
-    return error_counts
+    return f"{sum(error_counts.values())}/{len(targets)}, {error_counts}"
 
 def evaluate(seed, loader, model, loss_fn, device):
     # seed 를 다시 고정해서 학습할때 사용했던 augmentation 이 사용될 수 있도록 수정.
