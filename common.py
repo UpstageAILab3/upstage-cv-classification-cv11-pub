@@ -17,6 +17,7 @@ from PIL import Image
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 
 from dotenv import load_dotenv
 from datetime import datetime
@@ -242,6 +243,7 @@ def train_with_start_end_epoch(seed,
                                batch_size, 
                                start_epoch_inclusive, 
                                end_epoch_exclusive, 
+                               augment_ratio,
                                trn_loader,
                                val_loader,
                                model,
@@ -250,11 +252,14 @@ def train_with_start_end_epoch(seed,
                                loss_fn,
                                device,
                                is_save_model_checkpoint,
-                               is_trn_full,
-                               is_evaluate_train_valid):
+                               is_evaluate_train_valid,
+                               fold = 0,
+                               folds = 0):
     
     for epoch in range(start_epoch_inclusive, end_epoch_exclusive):
-        print("\n=================================================================\n")
+        epoch += 1
+        
+        print("\n=================================================================")
         ret = train_one_epoch(seed, trn_loader, model, optimizer, loss_fn, device=device)
         ret['epoch'] = epoch
 
@@ -263,12 +268,17 @@ def train_with_start_end_epoch(seed,
             log += f"{k}: {v:.4f}\n"
         print(log)
         
-        if is_save_model_checkpoint:
-            save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_name, optimizer, is_trn_full)
-            print()
-        
+        eval_str = ""
+
         if is_evaluate_train_valid and (val_loader != None):
-            evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device)
+            evalDict = evaluate_train_valid(seed, None, val_loader, model, loss_fn, device)
+            
+            if 'valid_results' in evalDict:
+                valid_results = evalDict['valid_results']            
+                eval_str = f'vl_{valid_results[0]:.4f}_va_{valid_results[1]:.4f}_vf1_{valid_results[2]:.4f}'
+        
+        if is_save_model_checkpoint:
+            save_model_checkpoint(seed, tst_img_size, batch_size, epoch, augment_ratio, model, model_name, optimizer, eval_str, fold, folds)
 
 def count_error_preds(preds, targets):
     error_counts = {}
@@ -319,30 +329,56 @@ def evaluate(seed, loader, model, loss_fn, device):
     return avg_loss, accuracy, f1, count_error_preds(all_preds, all_targets)
 
 def evaluate_train_valid(seed, trn_loader, val_loader, model, loss_fn, device):
-    train_results = evaluate(seed, trn_loader, model, loss_fn, device)
-    valid_results = evaluate(seed, val_loader, model, loss_fn, device)
+    if trn_loader != None:
+        train_results = evaluate(seed, trn_loader, model, loss_fn, device)
+    
+    if val_loader != None:
+        valid_results = evaluate(seed, val_loader, model, loss_fn, device)
 
     # 평가 결과 로깅
-    log_dict = {
-        "final_train_loss": train_results[0],
-        "final_train_accuracy": train_results[1],
-        "final_train_f1": train_results[2],
-        "final_valid_loss": valid_results[0],
-        "final_valid_accuracy": valid_results[1],
-        "final_valid_f1": valid_results[2],
-    }
+    log_dict = {}
+    
+    if trn_loader != None:
+        log_dict["final_train_loss"] = train_results[0]
+        log_dict["final_train_accuracy"] = train_results[1]
+        log_dict["final_train_f1"] = train_results[2]
+    
+    if val_loader != None:
+        log_dict["final_valid_loss"] = valid_results[0]
+        log_dict["final_valid_accuracy"] = valid_results[1]
+        log_dict["final_valid_f1"] = valid_results[2]
 
     wandb.log(log_dict)
 
     print()
     for k, v in log_dict.items():
         print(f'{k}: {v}')
-        
-    print(f"train's error preds count: {train_results[3]}")
-    print(f"valid's error preds count: {valid_results[3]}")
+    
+    if trn_loader != None:
+        print(f"train's error preds count: {train_results[3]}")
+    
+    if val_loader != None:
+        print(f"valid's error preds count: {valid_results[3]}")
+    
+    retDic = {}
+    if trn_loader != None:
+        retDic['train_results'] = train_results
+    
+    if val_loader != None:
+        retDic['valid_results'] = valid_results
+    
+    return retDic
 
-def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_name, optimizer, is_trn_full):
-    cp_filename = f"checkpoint-{model_name}_seed_{seed}_epoch_{epoch}_isFull_{is_trn_full}.pt"
+def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, augment_ratio, model, model_name, optimizer, postfix, fold = 0, folds = 0):
+    cp_filename = f"cp-{model_name}_sd_{seed}_epc_{epoch}_aug_{augment_ratio}"
+    
+    if len(postfix) > 0:
+        cp_filename += f"_{postfix}"
+    
+    if folds > 0:
+        cp_filename += f"_fold_{fold}_folds_{folds}"
+    
+    cp_filename += ".pt"
     
     torch.save(
         {
@@ -353,7 +389,7 @@ def save_model_checkpoint(seed, tst_img_size, batch_size, epoch, model, model_na
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
-            "description": f"{model_name} 모델 epoch {epoch} 까지 학습한 모델, 모든 train set 학습 여부: {is_trn_full}",        
+            "description": f"{model_name} 모델 epoch {epoch} 까지 학습한 모델, fold: {fold}/{folds}",
         },
         cp_filename
     )
@@ -367,63 +403,6 @@ def load_model_checkpoint(cp_filename, model, optimizer, device):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     return checkpoint
-
-def retrain_full_dataset(seed,
-                         tst_img_size,
-                         batch_size,
-                         epochs,
-                         trn_transform, 
-                         trn_aug_transform, 
-                         augment_ratio,
-                         num_workers,
-                         model_name,
-                         loss_fn,
-                         lr,
-                         device):
-    print("Starting final training on entire dataset for submission...")
-
-    # 전체 데이터셋 생성
-    full_dataset = ImageDataset(
-        "datasets_fin/train.csv",
-        "datasets_fin/train/",
-        transform=trn_transform, 
-        aug_transform=trn_aug_transform, 
-        augment_ratio=augment_ratio
-    )
-
-    full_loader = DataLoader(
-        full_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        drop_last=False
-    )
-
-    # 모델 재초기화
-    model = timm.create_model(model_name, pretrained=True, num_classes=17).to(device)
-    optimizer = Adam(model.parameters(), lr=lr)
-
-    # 전체 데이터셋으로 재학습
-    train_with_start_end_epoch(seed = seed,
-                               tst_img_size = tst_img_size,
-                               batch_size = batch_size,
-                               start_epoch_inclusive = 0,
-                               end_epoch_exclusive = epochs, 
-                               trn_loader = full_loader,
-                               val_loader = None,
-                               model = model,
-                               model_name = model_name,
-                               optimizer = optimizer,
-                               loss_fn = loss_fn,
-                               device = device,
-                               is_save_model_checkpoint = True,
-                               is_trn_full = True,
-                               is_evaluate_train_valid = False)
-
-    print("Final training completed.")
-    
-    return model, optimizer
 
 def get_preds_list_by_tst_loader(model, tst_loader, device, is_soft_voting=False):
     preds_list = []
@@ -455,3 +434,94 @@ def preds_list_to_save_to_csv(preds_list, tst_loader, csv_filename):
     assert (sample_submission_df['ID'] == pred_df['ID']).all()
 
     pred_df.to_csv(csv_filename, index=False)
+
+def get_fold_train_valid_csv_filenames(seed, fold, folds):
+    fold_train_filename = f'fold_train_SEED_{seed}_{fold}_{folds}.csv'
+    fold_valid_filename = f'fold_valid_SEED_{seed}_{fold}_{folds}.csv'
+    return fold_train_filename, fold_valid_filename
+
+def generate_fold_train_valid_csv_files(seed, folds):
+    df_train = pd.read_csv("datasets_fin/train.csv")
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+
+    for fold, (train_indices, valid_indices) in enumerate(skf.split(df_train, df_train['target'])):
+        fold += 1
+        
+        print(f"Fold {fold}/{folds}, train_idx: {type(train_indices)} {len(train_indices)}, {type(valid_indices)} {len(valid_indices)}")
+        #print(f"     train_indices: {train_indices}, valid_indices: {valid_indices}")
+        #print(f'train rows: {df_train.iloc[train_indices]}')
+        #print(f'valid rows: {df_train.iloc[valid_indices]}')
+        
+        fold_train_filename, fold_valid_filename = get_fold_train_valid_csv_filenames(seed, fold, folds)
+        
+        # 각 데이터프레임을 임시 CSV 파일로 저장
+        df_train.iloc[train_indices].to_csv(fold_train_filename, index=False)
+        df_train.iloc[valid_indices].to_csv(fold_valid_filename, index=False)
+
+def get_supplies_for_train_and_valid_with_fold(seed, 
+                                               model_name, 
+                                               lr,
+                                               batch_size, 
+                                               num_workers, 
+                                               fold,
+                                               folds, 
+                                               augment_ratio, 
+                                               trn_img_size, 
+                                               tst_img_size, 
+                                               device):
+    
+    fold_train_filename, fold_valid_filename = get_fold_train_valid_csv_filenames(seed, fold, folds)
+    
+    trn_transform = create_trn_transform(trn_img_size)
+    trn_aug_transform = create_trn_aug_transform(trn_img_size)
+    tst_transform = create_tst_transform(tst_img_size)
+    
+    # ImageDataset 생성
+    trn_dataset = ImageDataset(
+        fold_train_filename, 
+        "datasets_fin/train/",
+        transform=trn_transform, 
+        aug_transform=trn_aug_transform, 
+        augment_ratio=augment_ratio)
+    
+    val_dataset = ImageDataset(
+        fold_valid_filename, 
+        "datasets_fin/train/",
+        transform=tst_transform)
+    
+    # DataLoader 정의
+    trn_loader = DataLoader(
+        trn_dataset,
+        batch_size = batch_size,
+        shuffle = True,
+        num_workers = num_workers,
+        pin_memory = True,
+        drop_last = False
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size = batch_size,
+        shuffle = False,
+        num_workers = 0,
+        pin_memory = True
+    )
+    
+    # load model
+    model = timm.create_model(
+        model_name,
+        pretrained=True,
+        num_classes=17
+    ).to(device)
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = Adam(model.parameters(), lr=lr)
+    
+    retDict = {
+        "trn_loader": trn_loader,
+        "val_loader": val_loader,
+        "model": model,
+        "optimizer": optimizer,
+        "loss_fn": loss_fn,
+    }
+    
+    return retDict
