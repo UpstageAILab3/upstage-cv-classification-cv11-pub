@@ -257,11 +257,11 @@ def train_with_start_end_epoch(seed,
                                folds = 0):
     
     for epoch in range(start_epoch_inclusive, end_epoch_exclusive):
-        epoch += 1
-        
         print("\n=================================================================")
+        print(f'epoch: {epoch}')
+        print(f'다음 epoch 학습을 중단 예약하고 싶으면, 빈 BREAK 파일을 생성하세요.')
+        
         ret = train_one_epoch(seed, trn_loader, model, optimizer, loss_fn, device=device)
-        ret['epoch'] = epoch
 
         log = ""
         for k, v in ret.items():
@@ -279,6 +279,15 @@ def train_with_start_end_epoch(seed,
         
         if is_save_model_checkpoint:
             save_model_checkpoint(seed, tst_img_size, batch_size, epoch, augment_ratio, model, model_name, optimizer, eval_str, fold, folds)
+        
+        print('5초 동안 잠시 sleep 합니다. 다음 epoch 학습을 중단 예약하고 싶으면, 빈 BREAK 파일을 생성하세요.')
+        time.sleep(5)
+        
+        print('BREAK 파일이 있는지 확인합니다.')
+        if os.path.exists("BREAK"):
+            print('BREAK 파일이 존재합니다. 학습을 중단합니다.')
+            os.remove("BREAK")
+            break
 
 def count_error_preds(preds, targets):
     error_counts = {}
