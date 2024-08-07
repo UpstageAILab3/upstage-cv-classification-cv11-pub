@@ -152,6 +152,9 @@ sklearn==0.24.2
 
 ### Inference
 
+#### OCR 적용
+-  문서의 구조만으로는 판단하기 어려운 target 3,4,7,14에 대해 rotate, crop, contrast 등 전처리 후 EasyOCR을 적용하여 예측 성능을 높였습니다.
+-  
 #### TTA 적용
 - Test Time Augmentation을 통해 예측 성능을 높였습니다. 다양한 증강 기법을 테스트 이미지에 적용하여 모델의 예측을 평균화하였습니다.
 
