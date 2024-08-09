@@ -299,6 +299,9 @@ def count_error_preds(preds, targets):
             error_counts[target] = 1
         else:
             error_counts[target] += 1
+    
+    # reverse sort
+    error_counts = dict(sorted(error_counts.items(), key=lambda item: item[1], reverse=True))
             
     return f"{sum(error_counts.values())}/{len(targets)}, {error_counts}"
 
