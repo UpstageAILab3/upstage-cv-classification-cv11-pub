@@ -10,5 +10,6 @@ numpy==1.26.0
 pandas==2.1.4
 Pillow==9.4.0
 timm==0.9.12
-nbstripout # git commit 시 output 삭제
-wandb
+nbstripout==0.7.1 # git commit 시 output 삭제
+wandb==0.17.5
+import_ipynb==0.1.4
