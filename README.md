@@ -1,6 +1,8 @@
-# Document Type Classification | 문서 타입 분류
+# Document Type Classification | 문서 타입 분류 경진대회
+- Upstage AI Stages https://stages.ai/en/competitions/312/overview/description
+
 ## Team
-TBD
+![](https://github.com/UpstageAILab3/upstage-cv-classification-cv11/blob/main/docs/images/image0.png)
 
 ## 0. Overview
 ### Environment
@@ -59,17 +61,16 @@ TBD
 ## 2. Components
 
 ### Directory
-TBD
 ```
-├── code
-│   ├── jupyter_notebooks
-│   │   └── model_train.ipynb
-│   │   └── TTA_SoftVoting.ipynb
+│       
+├── 08_EasyOCR.ipynb
+├── ImageTransform.ipynb
+├── TTA_SoftVoting.ipynb
 │   
 ├── docs
-│   └── pdf
-│       └──  [패스트캠퍼스] Upstage AI Lab 3기_그룹 스터디 11조.pptx       
-
+│   └── 패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_발표자료_11조.pdf
+│   └── 패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_현황공유판_11조.xlsx
+│       
 ```
 
 ## 3. Data descrption
@@ -158,19 +159,13 @@ TBD
 -  문서의 구조만으로는 판단하기 어려운 target 3,4,7,14에 대해 rotate, crop, contrast 등 전처리 후 EasyOCR을 적용하여 최종 예측 성능을 높였습니다.
   
 ### Leader Board
-TBD
-- 리더보드 캡처:
-- 랭크와 점수:
-- Rank: 
-- Score:
+- Midterm F1 score 0.9859 - 1위
+- Final F1 score 0.9744 - 1위
 
 ### Presentation
-
-- TBD
-
-## etc
-
+- [패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_발표자료_11조.pdf](/docs/패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_발표자료_11조.pdf)
+  
+  
 ### Meeting Log
-
-- TBD
+- [패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_현황공유판_11조.xlsx](/docs/패스트캠퍼스_Upstage_AI_Lab_3기_CV_경진대회_현황공유판_11조.xlsx)
 
